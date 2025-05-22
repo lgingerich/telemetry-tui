@@ -5,20 +5,18 @@ use crossterm::{
 };
 use ratatui::{
     backend::CrosstermBackend,
-    layout::{Constraint, Direction, Layout},
-    text::Span,
-    widgets::{Block, Borders, List, ListItem, Paragraph},
     Terminal,
 };
 use std::io;
 use tokio::sync::mpsc;
 
 use crate::comm::{TelemetryEvent, TelemetrySource};
+use crate::tui;
 
 pub struct App {
     receiver: mpsc::Receiver<TelemetryEvent>,
-    logs: Vec<String>,
-    latest_state: Option<(f32, f32, f32, f32, f32, String)>,
+    pub logs: Vec<String>,
+    pub latest_state: Option<(f32, f32, f32, f32, f32, String)>,
 }
 
 impl App {
@@ -47,34 +45,7 @@ impl App {
 
         loop {
             terminal.draw(|f| {
-                let chunks = Layout::default()
-                    .direction(Direction::Vertical)
-                    .margin(1)
-                    .constraints([
-                        Constraint::Length(3),
-                        Constraint::Min(0),
-                    ])
-                    .split(f.area());
-
-                let state_text = if let Some((x, y, theta, vx, vy, mode)) = &self.latest_state {
-                    format!("Pose: x={:.2}, y={:.2}, θ={:.2}°\nVelocity: vx={:.2}, vy={:.2}\nMode: {}", x, y, theta, vx, vy, mode)
-                } else {
-                    "Waiting for data...".to_string()
-                };
-
-                let state_panel = Paragraph::new(state_text)
-                    .block(Block::default().title("Robot State").borders(Borders::ALL));
-                f.render_widget(state_panel, chunks[0]);
-
-                let log_items: Vec<ListItem> = self.logs.iter()
-                    .rev()
-                    .take(10)
-                    .map(|log| ListItem::new(Span::raw(log)))
-                    .collect();
-
-                let log_list = List::new(log_items)
-                    .block(Block::default().title("Logs").borders(Borders::ALL));
-                f.render_widget(log_list, chunks[1]);
+                tui::ui::draw_ui(f, self);
             })?;
 
             if event::poll(std::time::Duration::from_millis(100))? {
