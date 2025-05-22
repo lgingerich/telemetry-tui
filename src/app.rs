@@ -6,7 +6,6 @@ use crossterm::{
 use ratatui::{
     backend::CrosstermBackend,
     layout::{Constraint, Direction, Layout},
-    style::{Color, Style},
     text::Span,
     widgets::{Block, Borders, List, ListItem, Paragraph},
     Terminal,
@@ -19,7 +18,7 @@ use crate::comm::{TelemetryEvent, TelemetrySource};
 pub struct App {
     receiver: mpsc::Receiver<TelemetryEvent>,
     logs: Vec<String>,
-    latest_state: Option<(f32, f32, f32)>,
+    latest_state: Option<(f32, f32, f32, f32, f32, String)>,
 }
 
 impl App {
@@ -27,6 +26,7 @@ impl App {
         let (tx, rx) = mpsc::channel(100);
 
         let mut source = crate::comm::mock::MockSource::new();
+        // let mut source = crate::comm::serial::SerialSource::new("/dev/ttyUSB0", 115200);
         tokio::spawn(async move {
             let _ = source.start_stream(tx).await;
         });
@@ -56,8 +56,8 @@ impl App {
                     ])
                     .split(f.area());
 
-                let state_text = if let Some((x, y, theta)) = self.latest_state {
-                    format!("Pose: x={:.2}, y={:.2}, θ={:.2}°", x, y, theta)
+                let state_text = if let Some((x, y, theta, vx, vy, mode)) = &self.latest_state {
+                    format!("Pose: x={:.2}, y={:.2}, θ={:.2}°\nVelocity: vx={:.2}, vy={:.2}\nMode: {}", x, y, theta, vx, vy, mode)
                 } else {
                     "Waiting for data...".to_string()
                 };
@@ -87,8 +87,8 @@ impl App {
 
             while let Ok(event) = self.receiver.try_recv() {
                 match event {
-                    TelemetryEvent::State { x, y, theta, .. } => {
-                        self.latest_state = Some((x, y, theta));
+                    TelemetryEvent::State { x, y, theta, vx, vy, mode } => {
+                        self.latest_state = Some((x, y, theta, vx, vy, mode));
                     }
                     TelemetryEvent::Log { level, message } => {
                         self.logs.push(format!("[{}] {}", level, message));

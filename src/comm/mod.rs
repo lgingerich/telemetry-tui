@@ -1,6 +1,7 @@
-use tokio::sync::mpsc::Sender;
-
 pub mod mock;
+pub mod serial;
+
+use tokio::sync::mpsc::Sender;
 
 #[derive(Debug)]
 pub enum TelemetryEvent {
